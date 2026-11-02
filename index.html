@@ -80,7 +80,7 @@
   .hud-top { margin-bottom: 4px; }
   .hud-bottom { margin-top: 4px; }
   #board {
-    width: min(92vw, 55vh, 450px); height: min(92vw, 55vh, 450px);
+    width: min(92vw, 55vh, 400px); height: min(92vw, 55vh, 400px);
     display: block; border-radius: 16px; touch-action: none; cursor: crosshair;
     box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 80px rgba(255,180,80,0.08);
   }
@@ -116,14 +116,14 @@
 
 <div id="gameScreen" class="screen">
   <div id="topHud" class="hud hud-top"></div>
-  <canvas id="board" width="450" height="450"></canvas>
+  <canvas id="board" width="400" height="400"></canvas>
   <div id="bottomHud" class="hud hud-bottom"></div>
   <button id="newGameBtn" onclick="requestNewGame()">🔄 لعب مرة أخرى</button>
 </div>
 
 <script src="https://unpkg.com/peerjs@1.5.0/dist/peerjs.min.js"></script>
 <script>
-const BOARD = 450; // تصغير اللوحة من 600 إلى 450
+const BOARD = 400; // تصغير اللوحة من 600 إلى 400
 const PIECE_R = 16; // تصغير حجم الكرة قليلاً
 const MAGNET_R = 68; // مجال الجذب
 const PLACE_MIN = PIECE_R * 2.1;
