@@ -40,7 +40,7 @@
     font-family: monospace; transition: all 0.2s;
   }
   input:focus { outline: none; border-color: #66b3ff; box-shadow: 0 0 20px rgba(102,179,255,0.3); }
-  input::placeholder { color: rgba(255,255,255,0.25); letter-spacing: normal; text-transform: none; font-weight: 400; font-size: 15px; }
+  input::placeholder { color: rgba(255,255,255,0.25); letter-spacing: normal; text-transform: none; font-weight: 360; font-size: 15px; }
   .divider { color: rgba(200,220,255,0.35); font-size: 13px; margin: 4px 0; }
   #status, #status2 { color: rgba(200,220,255,0.7); font-size: 14px; text-align: center; min-height: 20px; }
   #roomCodeBig {
@@ -80,7 +80,7 @@
   .hud-top { margin-bottom: 4px; }
   .hud-bottom { margin-top: 4px; }
   #board {
-    width: min(92vw, 55vh, 400px); height: min(92vw, 55vh, 400px);
+    width: min(92vw, 55vh, 360px); height: min(92vw, 55vh, 360px);
     display: block; border-radius: 16px; touch-action: none; cursor: crosshair;
     box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 80px rgba(255,180,80,0.08);
   }
@@ -116,14 +116,14 @@
 
 <div id="gameScreen" class="screen">
   <div id="topHud" class="hud hud-top"></div>
-  <canvas id="board" width="400" height="400"></canvas>
+  <canvas id="board" width="360" height="360"></canvas>
   <div id="bottomHud" class="hud hud-bottom"></div>
   <button id="newGameBtn" onclick="requestNewGame()">🔄 لعب مرة أخرى</button>
 </div>
 
 <script src="https://unpkg.com/peerjs@1.5.0/dist/peerjs.min.js"></script>
 <script>
-const BOARD = 400; // تصغير اللوحة من 600 إلى 400
+const BOARD = 360; // تصغير اللوحة من 600 إلى 360
 const PIECE_R = 16; // تصغير حجم الكرة قليلاً
 const MAGNET_R = 68; // مجال الجذب
 const PLACE_MIN = PIECE_R * 2.1;
@@ -175,7 +175,7 @@ const sfxAttract = () => {
   setTimeout(() => playTone(480, 0.15, 'sawtooth', 0.07), 140);
 };
 const sfxWin = () => [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, 0.4, 'sine', 0.12), i * 110));
-const sfxLose = () => [400, 350, 300, 200].forEach((f, i) => setTimeout(() => playTone(f, 0.35, 'sine', 0.11), i * 150));
+const sfxLose = () => [360, 350, 300, 200].forEach((f, i) => setTimeout(() => playTone(f, 0.35, 'sine', 0.11), i * 150));
 const sfxError = () => playTone(180, 0.12, 'square', 0.08);
 
 function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
@@ -320,7 +320,7 @@ function playMoveEffects(result) {
   if (result.attracted && result.attracted.length > 0) {
     pulses.push({ x: result.placed.x, y: result.placed.y, start: now, duration: 700, color: result.placed.owner });
     for (const p of result.attracted) {
-      arcs.push({ x1: p.x, y1: p.y, x2: result.placed.x, y2: result.placed.y, start: now, duration: 400, owner: p.owner });
+      arcs.push({ x1: p.x, y1: p.y, x2: result.placed.x, y2: result.placed.y, start: now, duration: 360, owner: p.owner });
       animations.push({ x: p.x, y: p.y, toX: result.placed.x, toY: result.placed.y, owner: p.owner, start: now, duration: 500 });
     }
     sfxAttract();
@@ -389,7 +389,7 @@ function onPointerDown(e) {
   const check = checkPlacement(gameState, pos.x, pos.y);
   if (!check.ok) {
     sfxError();
-    pulses.push({ x: pos.x, y: pos.y, start: performance.now(), duration: 400, color: 'error' });
+    pulses.push({ x: pos.x, y: pos.y, start: performance.now(), duration: 360, color: 'error' });
     startRenderLoop();
     return;
   }
