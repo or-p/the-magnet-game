@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🧲 لعبة المغناطيس الاحترافية</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, sans-serif;
+    background: radial-gradient(ellipse at top, #1a1a2e 0%, #050510 100%);
+    color: #e8e8f0; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 10px; gap: 10px; overflow: hidden;
+  }
+  .screen { display: none; width: 100%; max-width: 560px; flex-direction: column; align-items: center; gap: 12px; }
+  .screen.active { display: flex; }
+  
+  h1 {
+    font-size: 32px; margin: 20px 0 4px; text-align: center;
+    background: linear-gradient(135deg, #ff4466, #ffaa44, #44ff88, #4488ff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; filter: drop-shadow(0 4px 12px rgba(100,180,255,0.3));
+  }
+  .subtitle { color: rgba(200,220,255,0.6); font-size: 14px; margin-bottom: 8px; text-align: center; }
+  
+  button {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff; border: none; padding: 14px 24px; border-radius: 12px;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    width: 100%; max-width: 300px; transition: all 0.15s;
+    box-shadow: 0 4px 16px rgba(102,126,234,0.4); font-family: inherit;
+  }
+  button:active { transform: scale(0.97); }
+  
+  .difficulty-container { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 300px; margin-top: 10px; }
+  .btn-easy { background: linear-gradient(135deg, #11998e, #38ef7d); box-shadow: 0 4px 16px rgba(56,239,125,0.3); }
+  .btn-medium { background: linear-gradient(135deg, #f2994a, #f2c94c); box-shadow: 0 4px 16px rgba(242,201,76,0.3); color: #333; }
+  .btn-hard { background: linear-gradient(135deg, #cb2d3e, #ef473a); box-shadow: 0 4px 16px rgba(239,71,58,0.3); }
+
+  button.secondary { background: linear-gradient(135deg, #2a2a3e, #1a1a2e); border: 2px solid rgba(100,180,255,0.3); box-shadow: none; }
+  input {
+    width: 100%; max-width: 300px; padding: 14px; border-radius: 12px;
+    border: 2px solid rgba(100,180,255,0.4); background: rgba(255,255,255,0.05);
+    color: #fff; font-size: 20px; text-align: center;
+    letter-spacing: 4px; text-transform: uppercase; font-weight: 700;
+    font-family: monospace;
+  }
+  input:focus { outline: none; border-color: #66b3ff; }
+  input::placeholder { color: rgba(255,255,255,0.25); letter-spacing: normal; text-transform: none; font-weight: 400; font-size: 14px; }
+  
+  #status { color: rgba(200,220,255,0.7); font-size: 14px; text-align: center; min-height: 20px; }
+  
+  /* شاشة الانتظار */
+  .spinner { width: 40px; height: 40px; border: 4px solid rgba(100,180,255,0.15); border-top-color: #66b3ff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #roomCodeBig {
+    font-size: 48px; font-weight: 900; letter-spacing: 8px;
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    padding: 20px 30px; border-radius: 16px; border: 2px dashed rgba(255,215,0,0.5);
+    background-color: rgba(255,215,0,0.05); font-family: monospace;
+  }
+
+  /* شاشة اللعب */
+  #gameScreen { max-width: 100%; position: relative; display: none; }
+  #gameScreen.active { display: flex; }
+  
+  .hud {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 16px; border-radius: 12px; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(100,180,255,0.15); width: 100%; font-size: 14px; font-weight: 700;
+  }
+  .hud.myTurn { border-color: rgba(68,255,136,0.6); box-shadow: 0 0 15px rgba(68,255,136,0.2); }
+  .hud.win { background: rgba(68,255,136,0.15); border-color: #44ff88; }
+  .hud.lose { background: rgba(255,68,102,0.15); border-color: #ff4466; }
+  .count { background: rgba(100,180,255,0.2); padding: 2px 8px; border-radius: 6px; font-family: monospace; font-size: 16px; }
+  .turn-indicator { font-size: 12px; color: #44ff88; margin-right: 5px; }
+  .hud-top { margin-bottom: 8px; }
+  .hud-bottom { margin-top: 8px; }
+  
+  .board-wrapper { position: relative; display: flex; justify-content: center; align-items: center; }
+  canvas {
+    display: block; border-radius: 12px; touch-action: none; cursor: crosshair;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    transition: box-shadow 0.3s, transform 0.1s;
+  }
+  .board-wrapper.danger canvas { box-shadow: 0 0 40px rgba(255,50,50,0.8), inset 0 0 20px rgba(255,0,0,0.5); }
+  
+  #timerDisplay {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 100px; font-weight: 900; font-family: monospace;
+    color: rgba(255,255,255,0.9); text-shadow: 0 0 20px rgba(255,255,255,0.5);
+    pointer-events: none; opacity: 0; transition: opacity 0.2s;
+  }
+  #timerDisplay.show { opacity: 1; }
+  #timerDisplay.danger { color: #ff4444; text-shadow: 0 0 30px rgba(255,0,0,0.8); animation: pulse-text 0.5s infinite alternate; }
+  @keyframes pulse-text { from { transform: translate(-50%, -50%) scale(1); } to { transform: translate(-50%, -50%) scale(1.2); } }
+
+  /* الشات */
+  .chat-toggle {
+    position: absolute; bottom: 70px; left: 10px; width: 50px; height: 50px;
+    border-radius: 50%; background: #667eea; display: flex; justify-content: center; align-items: center;
+    font-size: 24px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 100;
+    transition: transform 0.2s; border: 2px solid #fff;
+  }
+  .chat-toggle:active { transform: scale(0.9); }
+  .chat-badge {
+    position: absolute; top: -5px; right: -5px; background: #ff4466; color: white;
+    border-radius: 50%; width: 20px; height: 20px; font-size: 12px; display: none;
+    justify-content: center; align-items: center; font-weight: bold; border: 2px solid #1a1a2e;
+  }
+  .typing-dots { display: none; position: absolute; bottom: 12px; left: 12px; gap: 3px; }
+  .typing-dots span {
+    width: 6px; height: 6px; background: white; border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out both;
+  }
+  .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+  .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+  @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+  #chatOverlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(10, 15, 30, 0.95); backdrop-filter: blur(10px);
+    border-radius: 12px; display: none; flex-direction: column; z-index: 200; padding: 15px;
+  }
+  #chatOverlay.active { display: flex; }
+  .chat-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 10px; }
+  .chat-header h3 { margin: 0; font-size: 18px; }
+  .close-chat { background: none; border: none; color: #ff4466; font-size: 24px; cursor: pointer; padding: 0; box-shadow: none; width: auto; }
+  .chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .msg { padding: 8px 12px; border-radius: 10px; max-width: 80%; font-size: 14px; word-wrap: break-word; }
+  .msg.me { background: #667eea; align-self: flex-end; border-bottom-right-radius: 2px; }
+  .msg.opp { background: rgba(255,255,255,0.1); align-self: flex-start; border-bottom-left-radius: 2px; }
+  .chat-input-area { display: flex; gap: 8px; }
+  .chat-input-area input { flex: 1; padding: 10px; font-size: 14px; letter-spacing: normal; text-transform: none; }
+  .chat-input-area button { width: auto; padding: 10px 15px; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<!-- شاشة اختيار المستوى -->
+<div id="lobbyScreen" class="screen active">
+  <h1>🧲 لعبة المغناطيس</h1>
+  <p class="subtitle">اختر مستوى الصعوبة لتبدأ التحدي!<br>لديك 5 ثوانٍ فقط لوضع كل قطعة.</p>
+  <div class="difficulty-container">
+    <button class="btn-easy" onclick="selectLevel('easy')">🟢 سهل (للمبتدئين)</button>
+    <button class="btn-medium" onclick="selectLevel('medium')">🟡 متوسط (تحدي استراتيجي)</button>
+    <button class="btn-hard" onclick="selectLevel('hard')">🔴 صعب (حقل ألغام)</button>
+  </div>
+</div>
+
+<!-- شاشة إنشاء/انضمام غرفة -->
+<div id="roomScreen" class="screen">
+  <h2 id="selectedLevelText" style="color:#ffd700; margin-bottom: 20px;">المستوى: سهل</h2>
+  <button onclick="createRoom()">🎮 إنشاء غرفة (أنت المضيف)</button>
+  <div style="color: rgba(255,255,255,0.4); margin: 10px 0;">— أو —</div>
+  <input id="roomInput" placeholder="أدخل رمز الغرفة (6 حروف)" maxlength="6" autocomplete="off">
+  <button onclick="joinRoom()" class="secondary">🔗 انضمام لغرفة</button>
+  <button onclick="showScreen('lobbyScreen')" class="secondary" style="margin-top: 20px; font-size: 14px;">↩ رجوع</button>
+  <div id="status"></div>
+</div>
+
+<!-- شاشة الانتظار -->
+<div id="waitingScreen" class="screen">
+  <h2>📤 شارك هذا الرمز مع صديقك</h2>
+  <div id="roomCodeBig">------</div>
+  <button onclick="copyCode()" class="secondary">📋 نسخ الرمز</button>
+  <div class="spinner"></div>
+  <p style="margin-top: 10px;">في انتظار انضمام صديقك...</p>
+</div>
+
+<!-- شاشة اللعب -->
+<div id="gameScreen" class="screen">
+  <div id="topHud" class="hud hud-top"></div>
+  
+  <div class="board-wrapper" id="boardWrapper">
+    <canvas id="board"></canvas>
+    <div id="timerDisplay">5</div>
+    
+    <!-- الشات والفقاعة -->
+    <div class="chat-toggle" onclick="toggleChat()">
+      💬
+      <div class="chat-badge" id="chatBadge">1</div>
+      <div class="typing-dots" id="oppTypingIndicator"><span></span><span></span><span></span></div>
+    </div>
+    
+    <!-- واجهة الشات -->
+    <div id="chatOverlay">
+      <div class="chat-header">
+        <h3>💬 الدردشة</h3>
+        <button class="close-chat" onclick="toggleChat()">×</button>
+      </div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input-area">
+        <input type="text" id="chatInput" placeholder="اكتب رسالة..." maxlength="100" oninput="onChatTyping()" onkeypress="if(event.key === 'Enter') sendChat()">
+        <button onclick="sendChat()">إرسال</button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="bottomHud" class="hud hud-bottom"></div>
+  <button id="newGameBtn" onclick="requestNewGame()" style="display:none; margin-top: 10px;">🔄 لعب مرة أخرى</button>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.0/dist/peerjs.min.js"></script>
+<script>
+// ============ الإعدادات العامة والمستويات ============
+const PREFIX = 'mcg-final-';
+const TIMER_LIMIT = 5;
+
+const DIFFICULTIES = {
+  easy:   { board: 360, pieces: 10, r: 16, attract: 68, neutral: false, chain: false, chainAttract: 0 },
+  medium: { board: 400, pieces: 15, r: 16, attract: 68, neutral: false, chain: false, chainAttract: 0 },
+  hard:   { board: 400, pieces: 10, r: 18, attract: 80, neutral: true, chain: true, chainAttract: 110 }
+};
+
+let currentLevel = 'easy';
+let config = { ...DIFFICULTIES.easy };
+
+// ============ المتغيرات العامة ============
+let canvas, ctx, boardWrapper;
+let myRole = null, peer = null, conn = null, roomCode = null;
+let gameState = null;
+let hoverPos = null;
+let animations = [], pulses = [], confetti = [], arcs = [];
+let audioCtx = null;
+let renderLoopActive = false, lastFrame = 0;
+let screenShake = 0;
+let boardTexture = null;
+
+// إعدادات المؤقت
+let timerVal = TIMER_LIMIT;
+let timerInterval = null;
+let isTimerRunning = false;
+let isChatOpen = false;
+let oppIsTyping = false;
+let unreadMsgs = 0;
+let chatMessages = [];
+
+// ============ التهيئة ============
+window.addEventListener('load', () => {
+  canvas = document.getElementById('board');
+  ctx = canvas.getContext('2d');
+  boardWrapper = document.getElementById('boardWrapper');
+  
+  canvas.addEventListener('pointermove', onPointerMove);
+  canvas.addEventListener('pointerdown', onPointerDown);
+  canvas.addEventListener('pointerleave', () => { hoverPos = null; render(); });
+  
+  document.body.addEventListener('pointerdown', ensureAudio, { once: true });
+  boardTexture = generateBoardTexture(600); // توليد أعلى دقة
+  render();
+});
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ============ إعدادات الغرفة والاتصال ============
+function selectLevel(level) {
+  currentLevel = level;
+  config = { ...DIFFICULTIES[level] };
+  const names = { easy: '🟢 سهل', medium: '🟡 متوسط', hard: '🔴 صعب' };
+  document.getElementById('selectedLevelText').textContent = `المستوى: ${names[level]}`;
+  showScreen('roomScreen');
+}
+
+function generateCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+function createRoom() {
+  ensureAudio();
+  document.getElementById('status').textContent = 'جاري إنشاء الغرفة...';
+  roomCode = generateCode();
+  myRole = 'host';
+  
+  peer = new Peer(PREFIX + roomCode, { debug: 0 });
+  peer.on('open', () => {
+    document.getElementById('roomCodeBig').textContent = roomCode;
+    showScreen('waitingScreen');
+  });
+  peer.on('error', (err) => {
+    if (err.type === 'unavailable-id') { peer.destroy(); setTimeout(createRoom, 200); }
+    else document.getElementById('status').textContent = 'خطأ: ' + err.type;
+  });
+  peer.on('connection', (c) => {
+    if (conn) { c.close(); return; }
+    conn = c;
+    setupConn();
+  });
+}
+
+function joinRoom() {
+  ensureAudio();
+  const code = document.getElementById('roomInput').value.toUpperCase().trim();
+  if (code.length !== 6) { document.getElementById('status').textContent = 'الرمز يجب أن يكون 6 حروف'; return; }
+  
+  document.getElementById('status').textContent = 'جاري الاتصال...';
+  myRole = 'guest';
+  peer = new Peer({ debug: 0 });
+  
+  peer.on('open', () => {
+    conn = peer.connect(PREFIX + code, { reliable: true });
+    setupConn();
+    setTimeout(() => { if (conn && !conn.open) document.getElementById('status').textContent = 'تعذر الاتصال - تأكد من الرمز'; }, 8000);
+  });
+  peer.on('error', (err) => {
+    if (err.type === 'peer-unavailable') document.getElementById('status').textContent = 'الغرفة غير موجودة';
+    else document.getElementById('status').textContent = 'خطأ: ' + err.type;
+  });
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(roomCode).then(() => {
+    document.getElementById('roomCodeBig').textContent = 'تم النسخ ✓';
+    setTimeout(() => document.getElementById('roomCodeBig').textContent = roomCode, 2000);
+  });
+}
+
+function setupConn() {
+  conn.on('open', () => {
+    if (myRole === 'host') {
+      // المضيف يرسل إعدادات المستوى واللعبة
+      gameState = newGameState();
+      conn.send({ type: 'start', state: gameState, level: currentLevel });
+      startGame();
+    }
+  });
+  
+  conn.on('data', (data) => {
+    if (data.type === 'start') {
+      config = { ...DIFFICULTIES[data.level] };
+      gameState = data.state;
+      startGame();
+    } 
+    else if (data.type === 'move') {
+      if (myRole !== 'host') return;
+      const result = applyMove(gameState, 'guest', data.x, data.y);
+      if (result.ok) {
+        conn.send({ type: 'state', state: gameState, moveDetails: result });
+        playEffects(result);
+      } else {
+        conn.send({ type: 'state', state: gameState, invalid: true });
+      }
+    } 
+    else if (data.type === 'state') {
+      if (myRole !== 'guest') return;
+      gameState = data.state;
+      if (data.moveDetails) playEffects(data.moveDetails);
+      else if (data.invalid) sfxError();
+      else render();
+    } 
+    else if (data.type === 'timeout') {
+      if (myRole !== 'host') return;
+      const result = applyPenalty(gameState, 'guest');
+      conn.send({ type: 'state', state: gameState, moveDetails: result });
+      playEffects(result);
+    }
+    else if (data.type === 'chat') {
+      addChatMessage('opp', data.msg);
+      if (!isChatOpen) {
+        unreadMsgs++;
+        document.getElementById('chatBadge').style.display = 'flex';
+        document.getElementById('chatBadge').textContent = unreadMsgs;
+      }
+    }
+    else if (data.type === 'typing') {
+      oppIsTyping = data.isTyping;
+      updateTypingUI();
+    }
+    else if (data.type === 'requestNewGame') {
+      if (myRole !== 'host') return;
+      gameState = newGameState();
+      conn.send({ type: 'start', state: gameState, level: currentLevel });
+      startGame();
+    }
+  });
+  
+  conn.on('close', () => {
+    alert('انقطع الاتصال بصديقك.');
+    location.reload();
+  });
+}
+
+// ============ منطق اللعبة ============
+function newGameState() {
+  let pieces = [];
+  if (config.neutral) {
+    pieces.push({ x: config.board/2, y: config.board/2, owner: 'neutral' });
+  }
+  return {
+    pieces: pieces,
+    hostHand: config.pieces,
+    guestHand: config.pieces,
+    currentTurn: 'host',
+    winner: null
+  };
+}
+
+function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+function getAttracted(placed, all, R, isChain) {
+  const set = new Set([placed]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const p of all) {
+      if (set.has(p) || p.owner === 'neutral') continue;
+      for (const a of set) {
+        const radius = (isChain && a.owner !== 'neutral' && a !== placed) ? config.chainAttract : R;
+        if (dist(p, a) < radius) { set.add(p); changed = true; break; }
+      }
+    }
+  }
+  return set;
+}
+
+function checkPlacement(st, x, y) {
+  if (st.winner) return { ok: false, reason: 'gameover' };
+  if (x < config.r || x > config.board - config.r || y < config.r || y > config.board - config.r) return { ok: false, reason: 'out' };
+  for (const p of st.pieces) {
+    if (dist({x, y}, p) < config.r * 2.1) return { ok: false, reason: 'tooClose' };
+  }
+  return { ok: true };
+}
+
+function applyMove(st, player, x, y) {
+  const check = checkPlacement(st, x, y);
+  if (!check.ok) return check;
+  const hand = player === 'host' ? st.hostHand : st.guestHand;
+  if (hand <= 0) return { ok: false, reason: 'noPieces' };
+  
+  const placed = { x, y, owner: player };
+  let tempPieces = [...st.pieces, placed];
+  const result = { ok: true, placed: { x, y, owner: player }, attracted: [], won: false, neutralAttracted: [] };
+
+  // 1. التعامل مع المغناطيس المحايد
+  if (config.neutral) {
+    const neutralPiece = tempPieces.find(p => p.owner === 'neutral');
+    if (neutralPiece) {
+      // هل القطعة المضافة قريبة من المحايد؟
+      if (dist(placed, neutralPiece) < config.attract) {
+        // القطعة تلزق بالمحايد
+        placed.owner = 'neutral_attached_' + player; // نحتفظ بمن ألصقها
+        result.neutralAttracted.push({ x: placed.x, y: placed.y, newX: neutralPiece.x, newY: neutralPiece.y });
+        placed.x = neutralPiece.x + 10; placed.y = neutralPiece.y + 10; // إزاحة بسيطة
+      } else {
+        // هل القطعة قريبة من قطعة ملتصقة بالمحايد؟
+        const attachedPieces = tempPieces.filter(p => p.owner && p.owner.startsWith('neutral_attached'));
+        for (let ap of attachedPieces) {
+          if (dist(placed, ap) < config.attract) {
+            const originalOwner = ap.owner.replace('neutral_attached_', '');
+            // سرقة القطعة!
+            if (player === 'host') st.hostHand += 1; else st.guestHand += 1;
+            if (originalOwner === 'host') st.hostHand -= 1; else st.guestHand -= 1;
+            tempPieces = tempPieces.filter(p => p !== ap);
+            
+            // القطعة الجديدة تلزق
+            placed.owner = 'neutral_attached_' + player;
+            placed.x = neutralPiece.x + 10; placed.y = neutralPiece.y + 10;
+            result.neutralAttracted.push({ x: placed.x, y: placed.y, newX: neutralPiece.x, newY: neutralPiece.y, stolen: originalOwner });
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // 2. الجذب العادي والتسلسل
+  const attracted = getAttracted(placed, tempPieces, config.attract, config.chain);
+  
+  if (attracted.size > 1) {
+    result.attracted = [...attracted].filter(p => p !== placed).map(p => ({ x: p.x, y: p.y, owner: p.owner, isChain: config.chain }));
+    tempPieces = tempPieces.filter(p => !attracted.has(p));
+    const change = attracted.size - 1;
+    if (player === 'host') st.hostHand += change;
+    else st.guestHand += change;
+  } else {
+    if (player === 'host') st.hostHand -= 1;
+    else st.guestHand -= 1;
+  }
+
+  st.pieces = tempPieces;
+  
+  const newHand = player === 'host' ? st.hostHand : st.guestHand;
+  if (newHand <= 0) { st.winner = player; result.won = true; }
+  else st.currentTurn = player === 'host' ? 'guest' : 'host';
+  
+  return result;
+}
+
+// عقوبة انتهاء الوقت
+function applyPenalty(st, player) {
+  let targetX = Math.random() * (config.board - config.r*2) + config.r;
+  let targetY = Math.random() * (config.board - config.r*2) + config.r;
+  
+  // نحاول نلاقي مكان جنب مغناطيس
+  const validMagnets = st.pieces.filter(p => p.owner !== 'neutral');
+  if (validMagnets.length > 0) {
+    const randomMagnet = validMagnets[Math.floor(Math.random() * validMagnets.length)];
+    targetX = randomMagnet.x + (Math.random() - 0.5) * config.attract;
+    targetY = randomMagnet.y + (Math.random() - 0.5) * config.attract;
+    // نتأكد إنها في اللوحة
+    targetX = Math.max(config.r, Math.min(config.board - config.r, targetX));
+    targetY = Math.max(config.r, Math.min(config.board - config.r, targetY));
+  }
+  
+  // نستخدم applyMove عشان نحسب الجذب
+  let result = applyMove(st, player, targetX, targetY);
+  if (!result.ok) {
+    // لو فشل، نحطها في أي مكان فاضي عشوائي
+    let attempts = 0;
+    while (!result.ok && attempts < 50) {
+       targetX = Math.random() * (config.board - config.r*2) + config.r;
+       targetY = Math.random() * (config.board - config.r*2) + config.r;
+       result = applyMove(st, player, targetX, targetY);
+       attempts++;
+    }
+  }
+  result.isPenalty = true;
+  return result;
+}
+
+// ============ الصوت ============
+function ensureAudio() {
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return; } }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+function playTone(freq, dur, type='sine', vol=0.1) {
+  if (!audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + dur);
+  } catch(e) {}
+}
+const sfxPlace = () => playTone(620, 0.08, 'sine', 0.1);
+const sfxAttract = () => {
+  playTone(280, 0.1, 'sawtooth', 0.08);
+  setTimeout(() => playTone(380, 0.1, 'sawtooth', 0.08), 60);
+  setTimeout(() => playTone(480, 0.15, 'sawtooth', 0.08), 120);
+};
+const sfxTick = () => playTone(800, 0.05, 'square', 0.05);
+const sfxError = () => playTone(180, 0.15, 'square', 0.1);
+const sfxWin = () => [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, 0.4, 'sine', 0.15), i * 100));
+const sfxLose = () => [400, 350, 300, 200].forEach((f, i) => setTimeout(() => playTone(f, 0.3, 'sine', 0.12), i * 120));
+
+// ============ المؤقت ============
+function startTimer() {
+  clearInterval(timerInterval);
+  timerVal = TIMER_LIMIT;
+  updateTimerUI();
+  
+  if (gameState.winner) return;
+  
+  // المؤقت يشتغل بس لو دور اللاعب ومش فاتح الشات
+  const isMyTurn = gameState.currentTurn === myRole;
+  if (isMyTurn && isChatOpen) {
+    isTimerRunning = false;
+    return;
+  }
+
+  isTimerRunning = true;
+  document.getElementById('timerDisplay').classList.add('show');
+  document.getElementById('timerDisplay').classList.remove('danger');
+  boardWrapper.classList.remove('danger');
+
+  timerInterval = setInterval(() => {
+    if (!isTimerRunning) return;
+    
+    timerVal -= 0.1;
+    updateTimerUI();
+    
+    if (timerVal <= 2.0) {
+      document.getElementById('timerDisplay').classList.add('danger');
+      boardWrapper.classList.add('danger');
+      if (Math.abs(timerVal - Math.round(timerVal)) < 0.05) sfxTick();
+    }
+
+    if (timerVal <= 0) {
+      clearInterval(timerInterval);
+      document.getElementById('timerDisplay').classList.remove('show');
+      boardWrapper.classList.remove('danger');
+      handleTimeout();
+    }
+  }, 100);
+}
+
+function updateTimerUI() {
+  const display = document.getElementById('timerDisplay');
+  if (timerVal > 0) {
+    display.textContent = Math.ceil(timerVal);
+    display.classList.add('show');
+  } else {
+    display.classList.remove('show');
+  }
+}
+
+function handleTimeout() {
+  if (gameState.winner) return;
+  const isMyTurn = gameState.currentTurn === myRole;
+  
+  if (isMyTurn) {
+    // أنا اللي خسرت الوقت - بعت للمضيف يطبق العقوبة عليّا
+    if (myRole === 'host') {
+      const result = applyPenalty(gameState, 'host');
+      conn.send({ type: 'state', state: gameState, moveDetails: result });
+      playEffects(result);
+    } else {
+      conn.send({ type: 'timeout' }); // الضيف يبلغ المضيف
+    }
+  }
+}
+
+// ============ الشات ============
+function toggleChat() {
+  isChatOpen = !isChatOpen;
+  const overlay = document.getElementById('chatOverlay');
+  if (isChatOpen) {
+    overlay.classList.add('active');
+    document.getElementById('chatBadge').style.display = 'none';
+    unreadMsgs = 0;
+    document.getElementById('chatInput').focus();
+  } else {
+    overlay.classList.remove('active');
+    if (conn && conn.open) conn.send({ type: 'typing', isTyping: false });
+  }
+  
+  // إعادة تقييم المؤقت
+  const isMyTurn = gameState.currentTurn === myRole;
+  if (isMyTurn) {
+    if (isChatOpen) {
+      isTimerRunning = false; // إيقاف مؤقت
+    } else {
+      if (!isTimerRunning && timerVal > 0) {
+        // استئناف
+        isTimerRunning = true;
+        document.getElementById('timerDisplay').classList.add('show');
+      }
+    }
+  }
+}
+
+function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg || !conn) return;
+  
+  addChatMessage('me', msg);
+  conn.send({ type: 'chat', msg: msg });
+  input.value = '';
+  if (conn && conn.open) conn.send({ type: 'typing', isTyping: false });
+}
+
+let typingTimeout;
+function onChatTyping() {
+  if (!conn || !conn.open) return;
+  conn.send({ type: 'typing', isTyping: true });
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => { if(conn && conn.open) conn.send({ type: 'typing', isTyping: false }); }, 1500);
+}
+
+function addChatMessage(sender, text) {
+  chatMessages.push({ sender, text });
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = `msg ${sender === 'me' ? 'me' : 'opp'}`;
+  div.textContent = text;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function updateTypingUI() {
+  const indicator = document.getElementById('oppTypingIndicator');
+  indicator.style.display = oppIsTyping ? 'flex' : 'none';
+}
+
+// ============ بدء اللعب والرسم ============
+function startGame() {
+  showScreen('gameScreen');
+  
+  // ضبط حجم اللوحة
+  canvas.width = config.board;
+  canvas.height = config.board;
+  canvas.style.width = `min(92vw, 55vh, ${config.board}px)`;
+  canvas.style.height = `min(92vw, 55vh, ${config.board}px)`;
+  
+  // تصفير الشات
+  chatMessages = [];
+  document.getElementById('chatMessages').innerHTML = '';
+  document.getElementById('chatOverlay').classList.remove('active');
+  isChatOpen = false;
+  
+  boardTexture = generateBoardTexture(config.board);
+  animations = []; pulses = []; confetti = []; arcs = [];
+  screenShake = 0;
+  startTimer();
+  render();
+}
+
+function startRenderLoop() {
+  if (renderLoopActive) return;
+  renderLoopActive = true;
+  lastFrame = performance.now();
+  
+  function loop() {
+    const now = performance.now();
+    const dt = Math.min(50, now - lastFrame) / 16.67;
+    lastFrame = now;
+    
+    animations = animations.filter(a => now - a.start < a.duration);
+    pulses = pulses.filter(p => now - p.start < p.duration);
+    confetti = confetti.filter(c => now - c.start < c.duration);
+    arcs = arcs.filter(a => now - a.start < a.duration);
+    
+    for (const c of confetti) { c.x += c.vx * dt; c.y += c.vy * dt; c.vy += 0.45 * dt; c.rot += c.vrot * dt; }
+    if (screenShake > 0) screenShake *= 0.88;
+    if (screenShake < 0.3) screenShake = 0;
+    
+    render();
+    
+    if (animations.length > 0 || pulses.length > 0 || confetti.length > 0 || arcs.length > 0 || screenShake > 0) {
+      requestAnimationFrame(loop);
+    } else {
+      renderLoopActive = false;
+    }
+  }
+  requestAnimationFrame(loop);
+}
+
+function playEffects(result) {
+  const now = performance.now();
+  
+  if (result.isPenalty) {
+    sfxError();
+    screenShake = 15;
+    pulses.push({ x: result.placed.x, y: result.placed.y, start: now, duration: 800, color: 'error' });
+  }
+  
+  if (result.neutralAttracted && result.neutralAttracted.length > 0) {
+    for (let na of result.neutralAttracted) {
+      animations.push({ x: na.x, y: na.y, toX: na.newX, toY: na.newY, owner: result.placed.owner, start: now, duration: 500 });
+      if (na.stolen) {
+        playTone(900, 0.2, 'square', 0.1);
+        setTimeout(() => playTone(600, 0.2, 'square', 0.1), 100);
+      }
+    }
+  }
+
+  if (result.attracted && result.attracted.length > 0) {
+    pulses.push({ x: result.placed.x, y: result.placed.y, start: now, duration: 700, color: result.placed.owner });
+    for (const p of result.attracted) {
+      arcs.push({ x1: p.x, y1: p.y, x2: result.placed.x, y2: result.placed.y, start: now, duration: 400, owner: p.owner });
+      animations.push({ x: p.x, y: p.y, toX: result.placed.x, toY: result.placed.y, owner: p.owner, start: now, duration: 500 });
+    }
+    sfxAttract();
+  } else if (!result.isPenalty && (!result.neutralAttracted || result.neutralAttracted.length === 0)) {
+    pulses.push({ x: result.placed.x, y: result.placed.y, start: now, duration: 500, color: result.placed.owner });
+    sfxPlace();
+  }
+  
+  if (result.won) {
+    const isMe = result.placed.owner === myRole;
+    addConfetti();
+    screenShake = 15;
+    isMe ? sfxWin() : sfxLose();
+    clearInterval(timerInterval);
+    document.getElementById('timerDisplay').classList.remove('show');
+    boardWrapper.classList.remove('danger');
+  }
+  
+  startTimer(); // نعيد تشغيل المؤقت للدور القادم
+  startRenderLoop();
+}
+
+function addConfetti() {
+  const colors = ['#ff4466', '#ffaa44', '#44ff88', '#4488ff', '#ff44ff', '#ffdd44'];
+  for (let i = 0; i < 80; i++) {
+    confetti.push({
+      x: config.board/2 + (Math.random()-0.5)*40, y: config.board/2,
+      vx: (Math.random() - 0.5) * 16, vy: -Math.random() * 16 - 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      size: 3 + Math.random() * 6, rot: Math.random() * Math.PI,
+      vrot: (Math.random() - 0.5) * 0.3, start: performance.now(), duration: 2200
+    });
+  }
+}
+
+function requestNewGame() {
+  if (myRole === 'host') {
+    gameState = newGameState();
+    conn.send({ type: 'start', state: gameState, level: currentLevel });
+    startGame();
+  } else {
+    conn.send({ type: 'requestNewGame' });
+  }
+}
+
+// ============ الأحداث واللمس ============
+function getBoardCoords(e) {
+  const rect = canvas.getBoundingClientRect();
+  return { x: (e.clientX - rect.left) / rect.width * config.board, y: (e.clientY - rect.top) / rect.height * config.board };
+}
+
+function onPointerMove(e) {
+  if (!gameState || gameState.winner || gameState.currentTurn !== myRole || isChatOpen) {
+    if (hoverPos) { hoverPos = null; render(); }
+    return;
+  }
+  if (e.pointerType === 'touch') return;
+  hoverPos = getBoardCoords(e);
+  render();
+}
+
+function onPointerDown(e) {
+  if (!gameState || gameState.winner || gameState.currentTurn !== myRole || isChatOpen) return;
+  const pos = getBoardCoords(e);
+  const check = checkPlacement(gameState, pos.x, pos.y);
+  if (!check.ok) {
+    sfxError();
+    pulses.push({ x: pos.x, y: pos.y, start: performance.now(), duration: 400, color: 'error' });
+    startRenderLoop();
+    return;
+  }
+  attemptMove(pos.x, pos.y);
+}
+
+function attemptMove(x, y) {
+  hoverPos = null;
+  if (myRole === 'host') {
+    const result = applyMove(gameState, 'host', x, y);
+    if (result.ok) {
+      conn.send({ type: 'state', state: gameState, moveDetails: result });
+      playEffects(result);
+    }
+  } else {
+    conn.send({ type: 'move', x, y });
+  }
+}
+
+// ============ الرسومات ============
+function generateBoardTexture(size) {
+  const c = document.createElement('canvas');
+  c.width = size; c.height = size;
+  const bx = c.getContext('2d');
+  const grad = bx.createLinearGradient(0, 0, size, size);
+  grad.addColorStop(0, '#3d2c1a'); grad.addColorStop(0.5, '#2a1f14'); grad.addColorStop(1, '#1a1208');
+  bx.fillStyle = grad; bx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 200; i++) {
+    const y = Math.random() * size;
+    const w = 60 + Math.random() * 200;
+    const x = Math.random() * size - w/2;
+    bx.beginPath(); bx.moveTo(x, y);
+    for (let t = 0; t < w; t += 15) {
+      bx.lineTo(x + t, y + Math.sin(t * 0.04 + i) * 2.5 + Math.random() * 1.5);
+    }
+    const shade = Math.random() > 0.5 ? 'rgba(15,8,3,' : 'rgba(80,50,20,';
+    bx.strokeStyle = shade + (0.06 + Math.random()*0.12) + ')';
+    bx.lineWidth = 0.8 + Math.random() * 1.5;
+    bx.stroke();
+  }
+  const vg = bx.createRadialGradient(size/2, size/2, size*0.25, size/2, size/2, size*0.78);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.7)');
+  bx.fillStyle = vg; bx.fillRect(0, 0, size, size);
+  const light = bx.createRadialGradient(size*0.3, size*0.25, 20, size*0.3, size*0.25, size*0.7);
+  light.addColorStop(0, 'rgba(255,200,120,0.08)'); light.addColorStop(1, 'rgba(255,200,120,0)');
+  bx.fillStyle = light; bx.fillRect(0, 0, size, size);
+  return c;
+}
+
+function drawBoard() {
+  if (!boardTexture) boardTexture = generateBoardTexture(config.board);
+  ctx.drawImage(boardTexture, 0, 0);
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= config.board; i += 40) {
+    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, config.board); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(config.board, i); ctx.stroke();
+  }
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 10;
+  ctx.strokeRect(5, 5, config.board - 10, config.board - 10);
+  ctx.strokeStyle = 'rgba(200,160,100,0.4)'; ctx.lineWidth = 2;
+  ctx.strokeRect(2, 2, config.board - 4, config.board - 4);
+  ctx.restore();
+}
+
+function drawMagnet(x, y, owner, highlight, scale, isChainCharged) {
+  scale = scale || 1;
+  const r = config.r * scale;
+  let isHost = (owner === 'host' || owner === 'neutral_attached_host');
+  let isNeutral = (owner === 'neutral');
+
+  ctx.save();
+  ctx.translate(x, y);
+
+  // التوهج للتسلسل
+  if (isChainCharged) {
+    ctx.beginPath(); ctx.arc(0, 0, r + 8, 0, Math.PI * 2);
+    ctx.fillStyle = isHost ? 'rgba(255,50,50,0.4)' : 'rgba(50,150,255,0.4)';
+    ctx.fill();
+  }
+
+  // الظل
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 10; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 4;
+  ctx.beginPath(); ctx.arc(0, 0, r * 0.95, 0, Math.PI * 2);
+  ctx.fillStyle = '#000'; ctx.fill();
+  ctx.restore();
+
+  // الجسم
+  const sphereGrad = ctx.createRadialGradient(-r*0.3, -r*0.3, r*0.05, 0, 0, r);
+  if (isNeutral) {
+    sphereGrad.addColorStop(0, '#888'); sphereGrad.addColorStop(0.4, '#444'); sphereGrad.addColorStop(1, '#111');
+  } else {
+    sphereGrad.addColorStop(0, '#666'); sphereGrad.addColorStop(0.4, '#222'); sphereGrad.addColorStop(1, '#050505');
+  }
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fillStyle = sphereGrad; ctx.fill();
+
+  // التوهج اللوني
+  if (!isNeutral) {
+    const colorGlow = ctx.createRadialGradient(r*0.2, r*0.2, 0, r*0.2, r*0.2, r*0.9);
+    if (isHost) {
+      colorGlow.addColorStop(0, 'rgba(255, 50, 80, 0.5)'); colorGlow.addColorStop(1, 'rgba(255, 50, 80, 0)');
+    } else {
+      colorGlow.addColorStop(0, 'rgba(50, 150, 255, 0.5)'); colorGlow.addColorStop(1, 'rgba(50, 150, 255, 0)');
+    }
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = colorGlow; ctx.fill();
+  }
+
+  // الانعكاس
+  ctx.beginPath();
+  ctx.ellipse(-r*0.35, -r*0.35, r*0.25, r*0.15, -Math.PI/4, 0, Math.PI*2);
+  const spec = ctx.createRadialGradient(-r*0.35, -r*0.35, 0, -r*0.35, -r*0.35, r*0.3);
+  spec.addColorStop(0, 'rgba(255,255,255,1)'); spec.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = spec; ctx.fill();
+
+  if (highlight) {
+    ctx.beginPath(); ctx.arc(0, 0, r + 2, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2; ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawElectricArc(x1, y1, x2, y2, alpha, owner) {
+  const segments = 8;
+  const isHost = (owner === 'host' || owner === 'neutral_attached_host');
+  const color = isHost ? '255,100,120' : '100,180,255';
+  const offsets = [];
+  for (let i = 0; i <= segments; i++) offsets.push((Math.random() - 0.5) * 12 * Math.sin((i/segments) * Math.PI));
+  ctx.save();
+  ctx.shadowColor = `rgba(${color},0.9)`; ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.moveTo(x1, y1);
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  const perpX = -dy / len, perpY = dx / len;
+  for (let i = 1; i < segments; i++) {
+    const t = i / segments;
+    ctx.lineTo(x1 + dx * t + perpX * offsets[i], y1 + dy * t + perpY * offsets[i]);
+  }
+  ctx.lineTo(x2, y2);
+  ctx.strokeStyle = `rgba(255,255,255,${alpha})`; ctx.lineWidth = 2;
+  ctx.stroke(); ctx.restore();
+}
+
+function drawPreview(x, y) {
+  const check = checkPlacement(gameState, x, y);
+  const attractList = [];
+  for (const p of gameState.pieces) {
+    if (p.owner === 'neutral') continue; // المحايد مش بنجذبه
+    if (dist({x, y}, p) < config.attract) attractList.push({ piece: p, distance: dist({x, y}, p) });
+  }
+  for (const w of attractList) {
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(w.piece.x, w.piece.y);
+    ctx.strokeStyle = 'rgba(255,100,80,0.5)'; ctx.setLineDash([4, 5]); ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
+  }
+  ctx.beginPath(); ctx.arc(x, y, config.attract, 0, Math.PI * 2);
+  if (attractList.length > 0) { ctx.fillStyle = 'rgba(255,60,60,0.07)'; ctx.strokeStyle = 'rgba(255,80,80,0.55)'; }
+  else { ctx.fillStyle = 'rgba(80,255,120,0.05)'; ctx.strokeStyle = 'rgba(80,255,120,0.4)'; }
+  ctx.fill(); ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+  
+  if (check.ok) { ctx.globalAlpha = 0.55; drawMagnet(x, y, myRole, false, 1, false); ctx.globalAlpha = 1; }
+  else {
+    ctx.strokeStyle = 'rgba(255,60,60,0.85)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x-11, y-11); ctx.lineTo(x+11, y+11);
+    ctx.moveTo(x+11, y-11); ctx.lineTo(x-11, y+11); ctx.stroke(); ctx.lineCap = 'butt';
+  }
+}
+
+function render() {
+  if (!ctx) return;
+  ctx.clearRect(0, 0, config.board, config.board);
+  ctx.save();
+  if (screenShake > 0) ctx.translate((Math.random()-0.5)*screenShake, (Math.random()-0.5)*screenShake);
+  drawBoard();
+  
+  if (gameState) {
+    for (const p of gameState.pieces) {
+      // القطع الملتصقة بالمحايد بنرسمها
+      drawMagnet(p.x, p.y, p.owner, false, 1, false);
+    }
+    
+    if (hoverPos && gameState.currentTurn === myRole && !gameState.winner && !isChatOpen) drawPreview(hoverPos.x, hoverPos.y);
+    
+    const now = performance.now();
+    for (const a of arcs) {
+      const t = (now - a.start) / a.duration;
+      drawElectricArc(a.x1, a.y1, a.x2, a.y2, Math.max(0, 1 - t), a.owner);
+    }
+    
+    for (const a of animations) {
+      const t = Math.min(1, (now - a.start) / a.duration);
+      const ease = 1 - Math.pow(1 - t, 3);
+      const x = a.x + (a.toX - a.x) * ease;
+      const y = a.y + (a.toY - a.y) * ease;
+      const s = 1 - t * 0.4;
+      ctx.globalAlpha = 1 - t * 0.7;
+      drawMagnet(x, y, a.owner, false, s, true);
+      ctx.globalAlpha = 1;
+    }
+    
+    for (const pu of pulses) {
+      const t = (now - pu.start) / pu.duration;
+      const r = config.attract * t * 1.3;
+      const alpha = Math.max(0, 1 - t) * 0.8;
+      ctx.beginPath(); ctx.arc(pu.x, pu.y, r, 0, Math.PI * 2);
+      if (pu.color === 'error') ctx.strokeStyle = `rgba(255,80,80,${alpha})`;
+      else if (pu.color === 'host') ctx.strokeStyle = `rgba(255,100,120,${alpha})`;
+      else ctx.strokeStyle = `rgba(100,180,255,${alpha})`;
+      ctx.lineWidth = 3; ctx.stroke();
+    }
+    
+    for (const c of confetti) {
+      const t = (now - c.start) / c.duration;
+      ctx.save(); ctx.globalAlpha = 1 - t; ctx.translate(c.x, c.y); ctx.rotate(c.rot);
+      ctx.fillStyle = c.color; ctx.fillRect(-c.size/2, -c.size/2, c.size, c.size * 0.5); ctx.restore();
+    }
+    
+    if (gameState.winner) {
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(0, config.board/2 - 55, config.board, 110);
+      const isWinner = gameState.winner === myRole;
+      ctx.fillStyle = isWinner ? '#44ff88' : '#ff6688';
+      ctx.font = '900 40px "Arial Black", Arial, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowColor = isWinner ? 'rgba(68,255,136,0.8)' : 'rgba(255,102,136,0.8)';
+      ctx.shadowBlur = 20;
+      ctx.fillText(isWinner ? '🏆 فزت!' : '😢 خسرت', config.board/2, config.board/2);
+      ctx.shadowBlur = 0;
+    }
+  }
+  ctx.restore();
+  updateHud();
+}
+
+function updateHud() {
+  if (!gameState) return;
+  const myHand = myRole === 'host' ? gameState.hostHand : gameState.guestHand;
+  const oppHand = myRole === 'host' ? gameState.guestHand : gameState.hostHand;
+  const myColor = myRole === 'host' ? 'red' : 'blue';
+  const oppColor = myRole === 'host' ? 'blue' : 'red';
+  const topEl = document.getElementById('topHud');
+  const bottomEl = document.getElementById('bottomHud');
+  const newBtn = document.getElementById('newGameBtn');
+  
+  topEl.className = 'hud hud-top'; bottomEl.className = 'hud hud-bottom';
+  const oppTurn = !gameState.winner && gameState.currentTurn !== myRole;
+  
+  // تحديث HUD العلوي (الخصم)
+  topEl.innerHTML = `<div style="display:flex; align-items:center; gap:8px;">
+      <div style="width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 30% 30%, #555, #000);box-shadow: inset -2px -2px 6px ${oppColor==='red'?'rgba(255,50,50,0.8)':'rgba(50,150,255,0.8)'};"></div>
+      <span>الخصم</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span class="count">${oppHand}</span>
+      <span class="turn-indicator" style="display:${oppTurn?'inline':'none'}">🎯 يلعب</span>
+      <span class="turn-indicator" style="color:${oppColor==='red'?'#ff4466':'#4488ff'};display:${gameState.winner===myRole?'inline':'none'}">🏆 فاز</span>
+      <span class="turn-indicator" style="color:#ff4466;display:${gameState.winner=== (myRole==='host'?'guest':'host') ?'inline':'none'}">😢 خسر</span>
+    </div>`;
+    
+  // تحديث HUD السفلي (أنا)
+  let myStatus = '';
+  if (gameState.winner) {
+    if (gameState.winner === myRole) { myStatus = '<span class="win-badge">🏆 فزت!</span>'; bottomEl.classList.add('win'); }
+    else { myStatus = '<span>😢 خسرت</span>'; bottomEl.classList.add('lose'); }
+    newBtn.style.display = 'block';
+  } else {
+    if (gameState.currentTurn === myRole) { myStatus = '<span class="turn-indicator">🎯 دورك</span>'; bottomEl.classList.add('myTurn'); }
+    else { myStatus = '<span class="turn-indicator" style="color:rgba(200,220,255,0.5)">انتظر...</span>'; }
+    newBtn.style.display = 'none';
+  }
+  
+  bottomEl.innerHTML = `<div style="display:flex; align-items:center; gap:8px;">
+      <div style="width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 30% 30%, #555, #000);box-shadow: inset -2px -2px 6px ${myColor==='red'?'rgba(255,50,50,0.8)':'rgba(50,150,255,0.8)'};"></div>
+      <span>أنت</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span class="count">${myHand}</span>
+      ${myStatus}
+    </div>`;
+}
+</script>
+</body>
+</html>
