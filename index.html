@@ -581,22 +581,53 @@ const sfxPlace = () => {
   osc.start(now); osc.stop(now + 0.1);
 };
 
-// صوت الانجذاب المغناطيسي (كلاك معدني حاد)
+// صوت تصادم المغناطيسات (طقطقة معدنية حادة + رنين)
 const sfxAttract = () => {
   if (!audioCtx) return;
   const now = audioCtx.currentTime;
-  [400, 600, 900].forEach((freq, index) => {
+
+  // 1. صوت الارتطام الحاد (Sharp Snap)
+  const bufferSize = audioCtx.sampleRate * 0.1;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buffer;
+
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.setValueAtTime(3000, now); // تردد عالي للصلابة
+  filter.Q.setValueAtTime(1, now);
+
+  const noiseGain = audioCtx.createGain();
+  noiseGain.gain.setValueAtTime(0.7, now); // صوت عالي وقوي
+  noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08); // يتلاشى في 80 ملي ثانية
+
+  noise.connect(filter);
+  filter.connect(noiseGain);
+  noiseGain.connect(audioCtx.destination);
+  noise.start(now);
+
+  // 2. الرنين المعدني (Metallic Ringing)
+  const freqs = [1800, 2400, 3200];
+  freqs.forEach((freq, index) => {
     const osc = audioCtx.createOscillator();
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(freq, now + index * 0.02);
-    osc.frequency.exponentialRampToValueAtTime(freq * 1.5, now + index * 0.02 + 0.05);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
     
-    const gain = audioCtx.createGain();
-    gain.gain.setValueAtTime(0.05, now + index * 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + index * 0.02 + 0.08);
-    
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(now + index * 0.02); osc.stop(now + index * 0.02 + 0.08);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.9, now + 0.15);
+
+    const oscGain = audioCtx.createGain();
+    oscGain.gain.setValueAtTime(0.1 / (index + 1), now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2 + (index * 0.05));
+
+    osc.connect(oscGain);
+    oscGain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.3);
   });
 };
 const sfxTick = () => playTone(800, 0.05, 'square', 0.05);
